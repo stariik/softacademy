@@ -1,0 +1,204 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String?   @unique
+  phone         String?   @unique
+  password      String?
+  name          String
+  role          Role      @default(USER)
+  emailVerified Boolean   @default(false)
+  phoneVerified Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  orders        Order[]
+  reviews       Review[]
+  wishlist      Wishlist[]
+  otpCodes      OTPCode[]
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+model Category {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?
+  image       String?
+  icon        String?  // Icon name for display (e.g., 'Code', 'Palette', 'TrendingUp')
+  createdAt   DateTime @default(now())
+
+  courses     Course[]
+}
+
+model Course {
+  id              String   @id @default(cuid())
+  title           String
+  slug            String   @unique
+  description     String   @db.Text
+  shortDesc       String
+  price           Decimal  @db.Decimal(10, 2)
+  image           String?
+  instructor      String
+  instructorBio   String?  @db.Text
+  instructorImage String?
+  duration        String
+  startDate       DateTime
+  meetLink        String?
+  syllabus        Json
+  syllabusFile    String?  // PDF file path for downloadable syllabus
+  maxStudents     Int?
+  isPublished     Boolean  @default(false)
+  isFeatured      Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  categoryId      String
+  category        Category @relation(fields: [categoryId], references: [id])
+
+  orders          Order[]
+  reviews         Review[]
+  wishlist        Wishlist[]
+}
+
+model Order {
+  id          String      @id @default(cuid())
+  orderNumber String      @unique
+  status      OrderStatus @default(PENDING)
+  amount      Decimal     @db.Decimal(10, 2)
+  discount    Decimal     @default(0) @db.Decimal(10, 2)
+  finalAmount Decimal     @db.Decimal(10, 2)
+  createdAt   DateTime    @default(now())
+
+  userId      String
+  user        User        @relation(fields: [userId], references: [id])
+
+  courseId    String
+  course      Course      @relation(fields: [courseId], references: [id])
+
+  promocodeId String?
+  promocode   Promocode?  @relation(fields: [promocodeId], references: [id])
+}
+
+enum OrderStatus {
+  PENDING
+  COMPLETED
+  CANCELLED
+  REFUNDED
+}
+
+model Promocode {
+  id          String       @id @default(cuid())
+  code        String       @unique
+  type        DiscountType
+  value       Decimal      @db.Decimal(10, 2)
+  maxUses     Int?
+  usedCount   Int          @default(0)
+  minPurchase Decimal?     @db.Decimal(10, 2)
+  expiresAt   DateTime?
+  isActive    Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+
+  orders      Order[]
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED
+}
+
+model Review {
+  id         String   @id @default(cuid())
+  rating     Int
+  comment    String   @db.Text
+  isApproved Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+
+  courseId   String
+  course     Course   @relation(fields: [courseId], references: [id])
+
+  @@unique([userId, courseId])
+}
+
+model Wishlist {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+
+  courseId  String
+  course    Course   @relation(fields: [courseId], references: [id])
+
+  @@unique([userId, courseId])
+}
+
+model OTPCode {
+  id        String   @id @default(cuid())
+  code      String
+  type      OTPType
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+enum OTPType {
+  EMAIL_VERIFY
+  PHONE_VERIFY
+  LOGIN
+}
+
+model ScheduledReminder {
+  id           String   @id @default(cuid())
+  type         String
+  scheduledFor DateTime
+  sent         Boolean  @default(false)
+  courseId     String
+  userId       String
+  createdAt    DateTime @default(now())
+}
+
+model Settings {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String   @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model BlogPost {
+  id          String   @id @default(cuid())
+  title       String
+  slug        String   @unique
+  excerpt     String   @db.Text
+  content     String   @db.Text
+  coverImage  String?
+  authorName  String
+  authorImage String?
+  category    String   @default("general")
+  tags        Json?
+  readTime    Int      @default(5)
+  isPublished Boolean  @default(false)
+  isFeatured  Boolean  @default(false)
+  views       Int      @default(0)
+  publishedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
